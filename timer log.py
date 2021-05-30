@@ -1,9 +1,14 @@
 import platform
+from playsound import playsound
+import threading
+from datetime import datetime
 
 try:
     import Tkinter as tk
 except ImportError:
     import tkinter as tk
+
+LOG_FILE_NAME = 'alarmLog.txt'
 
 FONT_NAME = 'Roboto'
 
@@ -45,9 +50,6 @@ def bind_scroll(obj, listener):
 
 
 def convert(seconds):
-    """
-    Convert seconds to (seconds, minutes, hours, remainder_seconds)
-    """
     r = seconds
 
     s = r % 60
@@ -245,6 +247,9 @@ class Counter(object):
             label.bind('<Button-1>', self.clicked)
             label.bind('<Double-Button-1>', self.reset)
 
+        self.starttime = None
+
+
     def reset(self, event=None):
         self.paused = True
         self.time = 0
@@ -255,6 +260,7 @@ class Counter(object):
         if event.num == 1 and self.time > 0:
             self.paused = not self.paused
             self.text_colour.flip()
+            self.starttime = self.time
             self.refresh()
 
     def scroll_listener(self, increment, decrement=None):
@@ -277,8 +283,12 @@ class Counter(object):
     def tick(self):
         if not self.paused and self.time > 0:
             self.time -= 1
-            if self.time == 0:
+            if self.time == 0:                
                 self.reset()
+                t = threading.Thread(target = self.PlayAlarm)
+                t.start()
+                self.WriteLog()
+
         self.refresh()
 
     def refresh(self):
@@ -297,12 +307,24 @@ class Counter(object):
             label.configure(text=timestr)
             label.configure(fg=self.text_colour.value)
             label.grid(column=2 - idx, row=1)
+        
+
+    def PlayAlarm(self):
+        playsound('alarm.mp3')
+
+    def WriteLog(self):
+        with open(LOG_FILE_NAME, 'a') as reader:
+            logstr = datetime.now().strftime('%H:%M:%S')
+            #logstr += f' - {self.starttime} second(s) timer finished.\n'
+            times = convert(self.starttime)
+            logstr += f' - {times[2]}:{times[1]}:{times[0]} timer finished.\n'
+            reader.write(logstr)
 
 
 def main():
     app = Timer()
     app.create_counter()
     app.mainloop()
-    app.destroy()
+    #app.destroy()
 
 main()
